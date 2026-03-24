@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebGIS — B-GRIT | Pertamina NRE | Grow a Garden Project</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green-dark: #0A3D1F;
+  --green-mid: #1A5C2A;
+  --green-accent: #2E8B57;
+  --green-light: #4CAF50;
+  --green-pale: #C8E6C9;
+  --blue-dark: #01579B;
+  --blue-mid: #0277BD;
+  --orange: #E65100;
+  --purple: #6A1B9A;
+  --red: #B71C1C;
+  --yellow: #F9A825;
+  --bg: #0D1B12;
+  --surface: #132218;
+  --surface2: #1A2E20;
+  --border: rgba(46,139,87,0.25);
+  --text: #E8F5E9;
+  --text-muted: #81C784;
+  --text-dim: #4CAF50;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* === HEADER === */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+  flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo-dot {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--green-mid), var(--green-light));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.header-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+.header-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.header-right { display: flex; gap: 8px; align-items: center; }
+.tag {
+  font-size: 10px; font-weight: 600; padding: 3px 8px;
+  border-radius: 20px; border: 1px solid;
+  font-family: var(--mono);
+}
+.tag-green { background: rgba(46,139,87,.15); color: var(--green-light); border-color: rgba(46,139,87,.4); }
+.tag-blue { background: rgba(2,119,189,.15); color: #4FC3F7; border-color: rgba(2,119,189,.4); }
+
+/* === MAIN LAYOUT === */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* === SIDEBAR === */
+.sidebar {
+  width: 300px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stab {
+  flex: 1; padding: 9px 6px;
+  text-align: center; font-size: 10px; font-weight: 600;
+  cursor: pointer; color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all .2s; letter-spacing: 0.3px; text-transform: uppercase;
+}
+.stab.active { color: var(--green-light); border-bottom-color: var(--green-light); background: rgba(76,175,80,.05); }
+
+.sidebar-content { overflow-y: auto; flex: 1; padding: 12px; }
+
+/* LEGEND */
+.legend-section { margin-bottom: 14px; }
+.legend-title { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.legend-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 6px; cursor: pointer;
+  transition: background .15s; margin-bottom: 2px;
+  font-size: 11px; color: var(--text);
+}
+.legend-item:hover { background: rgba(255,255,255,.05); }
+.legend-item.inactive { opacity: 0.4; }
+.leg-icon {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.leg-sq { border-radius: 3px; }
+.leg-diamond { transform: rotate(45deg); border-radius: 2px; width: 12px; height: 12px; }
+
+/* POINT LIST */
+.point-item {
+  padding: 8px 10px; border-radius: 8px;
+  margin-bottom: 4px; cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .15s; background: var(--surface2);
+}
+.point-item:hover { border-color: var(--border); background: rgba(76,175,80,.08); }
+.point-item.active { border-color: var(--green-accent); background: rgba(46,139,87,.15); }
+.pi-name { font-size: 11px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.pi-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.pi-coord { font-size: 9px; font-family: var(--mono); color: var(--text-dim); margin-top: 3px; }
+.pi-badges { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.pi-badge {
+  font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+/* FILTER BUTTONS */
+.filter-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.filter-btn {
+  font-size: 9px; font-weight: 700; padding: 3px 8px;
+  border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text-muted);
+  cursor: pointer; transition: all .15s; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.filter-btn.active { background: var(--green-mid); color: #fff; border-color: var(--green-mid); }
+
+/* STATS */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+.stat-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+}
+.stat-num { font-size: 20px; font-weight: 700; color: var(--green-light); font-family: var(--mono); }
+.stat-label { font-size: 9px; color: var(--text-muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* === MAP === */
+#map { flex: 1; z-index: 1; }
+
+/* === POPUP === */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  padding: 0;
+  max-width: 280px;
+}
+.custom-popup .leaflet-popup-tip { background: var(--surface); }
+.custom-popup .leaflet-popup-content { margin: 0; }
+
+.popup-inner { padding: 14px; }
+.popup-type {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; margin-bottom: 4px; font-family: var(--mono);
+}
+.popup-name { font-size: 13px; font-weight: 700; color: #E8F5E9; line-height: 1.3; margin-bottom: 6px; }
+.popup-row { font-size: 11px; color: #81C784; margin-bottom: 3px; line-height: 1.5; }
+.popup-row b { color: #E8F5E9; }
+.popup-coord {
+  font-family: var(--mono); font-size: 10px;
+  background: rgba(0,0,0,.3); padding: 4px 8px; border-radius: 4px;
+  margin-top: 8px; color: var(--green-light);
+}
+.popup-prio { margin-top: 8px; }
+.prio-badge {
+  display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 7px;
+  border-radius: 10px; text-transform: uppercase;
+}
+
+/* BOTTOM INFO BAR */
+.infobar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 6px 16px;
+  display: flex; align-items: center; gap: 16px;
+  font-size: 10px; color: var(--text-muted);
+  flex-shrink: 0;
+}
+.infobar-item { display: flex; align-items: center; gap: 5px; }
+.infobar-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Scrollbar */
+.sidebar-content::-webkit-scrollbar { width: 4px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Panel tabs */
+.spanel { display: none; }
+.spanel.show { display: block; }
+
+/* Search box */
+.search-box {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; font-size: 11px;
+  color: var(--text); font-family: var(--sans);
+  margin-bottom: 10px; outline: none;
+}
+.search-box:focus { border-color: var(--green-accent); }
+.search-box::placeholder { color: var(--text-dim); }
+
+/* Map controls styling */
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+.leaflet-control-zoom a:hover { background: var(--surface2) !important; color: var(--green-light) !important; }
+
+/* Route lines label */
+.route-label {
+  background: none; border: none; box-shadow: none;
+}
+
+/* Tooltip */
+.custom-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  font-family: var(--sans) !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-dot">🌿</div>
+    <div>
+      <div class="header-title">WebGIS — B-GRIT | Pertamina NRE</div>
+      <div class="header-sub">Grow a Garden Project · Peta Strategis Bio-CNG & Bioetanol · Maret 2026</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="tag tag-green">25 Titik Strategis</span>
+    <span class="tag tag-blue">Basemap: OpenStreetMap</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="stab active" onclick="switchTab('legend')">Legenda</div>
+      <div class="stab" onclick="switchTab('list')">Titik (25)</div>
+      <div class="stab" onclick="switchTab('stats')">Statistik</div>
+    </div>
+    <div class="sidebar-content">
+
+      <!-- LEGEND PANEL -->
+      <div class="spanel show" id="spanel-legend">
+        <div class="legend-section">
+          <div class="legend-title">📍 Sumber Bahan Baku (PKS)</div>
+          <div class="legend-item" onclick="toggleLayer('pks-bumn')">
+            <div class="leg-icon" style="background:#B71C1C"></div>
+            <span>PKS — BUMN (PTPN IV PalmCo)</span>
+          </div>
+          <div class="legend-item" onclick="toggleLayer('pks-priv')">
+            <div class="leg-icon" style="background:#1565C0"></div>
+            <span>PKS — Swasta (Asian Agri, Wilmar, dll)</span>
+          </div>
+        </div>
+        <div class="legend-section">
+          <div class="legend-title">🚢 Infrastruktur Distribusi</div>
+          <div class="legend-item" onclick="toggleLayer('port')">
+            <div class="leg-icon leg-sq" style="background:#E65100"></div>
+            <span>Pelabuhan Strategis (Virtual Pipeline)</span>
+          </div>
+          <div class="legend-item" onclick="toggleLayer('hub')">
+            <div class="leg-icon leg-diamond" style="background:#6A1B9A"></div>
+            <span>Smart Satellite Hub (Usulan B-GRIT)</span>
+          </div>
+        </div>
+        <div class="legend-section">
+          <div class="legend-title">🏭 Pusat Permintaan (Jawa)</div>
+          <div class="legend-item" onclick="toggleLayer('demand')">
+            <div class="leg-icon" style="background:#F9A825;border-radius:2px"></div>
+            <span>Demand Center — Kawasan Industri</span>
+          </div>
+        </div>
+        <div class="legend-section">
+          <div class="legend-title">🛣️ Rute Virtual Pipeline</div>
+          <div class="legend-item">
+            <div style="width:24px;height:2px;background:#E65100;border-top:2px dashed #E65100"></div>
+            <span>Rute Sumatera → Jawa</span>
+          </div>
+          <div class="legend-item">
+            <div style="width:24px;height:2px;border-top:2px dashed #0277BD"></div>
+            <span>Rute Kalimantan → Jawa</span>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:8px;font-size:10px;color:var(--text-muted);line-height:1.6">
+          <b style="color:var(--green-light)">💡 Cara Pakai:</b><br>
+          • Klik titik di peta untuk detail<br>
+          • Klik item legenda untuk hide/show layer<br>
+          • Tab "Titik" untuk lihat semua koordinat<br>
+          • Scroll + zoom untuk eksplorasi peta<br>
+          • Basemap: OSM (akurasi batas administrasi tinggi)
+        </div>
+      </div>
+
+      <!-- LIST PANEL -->
+      <div class="spanel" id="spanel-list">
+        <input class="search-box" type="text" placeholder="Cari titik lokasi..." oninput="filterList(this.value)" id="search-input">
+        <div class="filter-row">
+          <div class="filter-btn active" onclick="setFilter('all',this)">Semua</div>
+          <div class="filter-btn" onclick="setFilter('pks-bumn',this)">BUMN</div>
+          <div class="filter-btn" onclick="setFilter('pks-priv',this)">Swasta</div>
+          <div class="filter-btn" onclick="setFilter('port',this)">Pelabuhan</div>
+          <div class="filter-btn" onclick="setFilter('hub',this)">Hub</div>
+          <div class="filter-btn" onclick="setFilter('demand',this)">Demand</div>
+        </div>
+        <div id="point-list"></div>
+      </div>
+
+      <!-- STATS PANEL -->
+      <div class="spanel" id="spanel-stats">
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">PKS BUMN</div></div>
+          <div class="stat-card"><div class="stat-num">7</div><div class="stat-label">PKS Swasta</div></div>
+          <div class="stat-card"><div class="stat-num">6</div><div class="stat-label">Pelabuhan</div></div>
+          <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">Smart Hub</div></div>
+        </div>
+        <div class="stat-card" style="margin-bottom:6px">
+          <div class="stat-num" style="font-size:16px">~25 jt ton</div>
+          <div class="stat-label">Total POME tersedia/tahun (10 PKS besar)</div>
+        </div>
+        <div class="stat-card" style="margin-bottom:6px">
+          <div class="stat-num" style="font-size:16px">2–3%</div>
+          <div class="stat-label">POME yg dibutuhkan pilot 1 MMSCFD</div>
+        </div>
+        <div class="stat-card" style="margin-bottom:6px">
+          <div class="stat-num" style="font-size:16px">5.49 jt ha</div>
+          <div class="stat-label">Luas kebun sawit Riau + Kal-Tengah</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:8px;font-size:10px;color:var(--text-muted);line-height:1.6">
+          <b style="color:var(--green-light)">📊 Sumber Data:</b><br>
+          · RSPO Mill List 2024 (vvfltd.com)<br>
+          · Wilmar Sustainability Report 2024<br>
+          · Pelindo Port Data 2024<br>
+          · PTPN IV PalmCo CBG Plant (Palm Oil Magazine, Nov 2025)<br>
+          · Statista Palm Oil Province (2024)<br>
+          · Colgate/PepsiCo Mill List (NDPE)
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="infobar">
+  <div class="infobar-item">
+    <div class="infobar-dot" style="background:var(--green-light)"></div>
+    <span>Klik titik di peta untuk detail lengkap</span>
+  </div>
+  <div class="infobar-item">
+    <div class="infobar-dot" style="background:var(--orange)"></div>
+    <span>Basemap: OpenStreetMap — batas administrasi akurat</span>
+  </div>
+  <div class="infobar-item" style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text-dim)">
+    WebGIS v1.0 · BCC IYREF 2026 · Pertamina NRE
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// =====================================================
+// DATA — 25 titik koordinat presisi
+// =====================================================
+const POINTS = [
+  // === PKS BUMN (PTPN IV PalmCo) ===
+  {
+    id:"pks-1", cat:"pks-bumn", prio:1,
+    name:"PKS Sei Rokan — PTPN IV PalmCo",
+    company:"PTPN IV PalmCo (BUMN)",
+    region:"Rokan Hulu, Riau",
+    lat:1.0500, lng:100.4167,
+    capacity:"60 ton TBS/jam, POME ~400 ton/hari",
+    note:"PTBg biogas resmi beroperasi Nov 2025 (60 ton/jam). PROOF OF CONCEPT terkuat — Bio-CNG dari POME sudah berjalan. Target utama MoU Waste-to-Energy B-GRIT.",
+    pome:"~400 ton/hari",
+    rspo:"RSPO + ISPO",
+    src:"Palm Oil Magazine, Nov 2025"
+  },
+  {
+    id:"pks-2", cat:"pks-bumn", prio:1,
+    name:"PKS Lubuk Dalam — PTPN IV PalmCo",
+    company:"PTPN IV PalmCo (BUMN)",
+    region:"Siak, Riau",
+    lat:0.7217, lng:101.7667,
+    capacity:"POME ~300 ton/hari",
+    note:"Unit PTBg PERTAMA raih sertifikat pengurangan emisi GRK & masuk IDX Carbon. Sudah bankable kredit karbon internasional (MRA Verra). Referensi monetisasi karbon B-GRIT.",
+    pome:"~300 ton/hari",
+    rspo:"RSPO + IDX Carbon Certified",
+    src:"PTPN IV Annual Report 2024"
+  },
+  {
+    id:"pks-3", cat:"pks-bumn", prio:1,
+    name:"Klaster Kampar — PTPN IV PalmCo",
+    company:"PTPN IV PalmCo (BUMN)",
+    region:"Kampar, Riau",
+    lat:0.3653, lng:101.1603,
+    capacity:"POME ~500 ton/hari (klaster)",
+    note:"Kebun Terantam & Berlian — replanting 949,6 ha (Okt 2025) menjamin pasokan 20–25 tahun. PTPN IV Regional III HQ di Pekanbaru dekat klaster ini.",
+    pome:"~500 ton/hari",
+    rspo:"RSPO",
+    src:"PTPN IV News, Okt 2025"
+  },
+  {
+    id:"pks-4", cat:"pks-bumn", prio:1,
+    name:"Sei Mangkei — PTPN IV PalmCo Reg.I",
+    company:"PTPN IV PalmCo (BUMN)",
+    region:"Simalungun, Sumatra Utara",
+    lat:2.9833, lng:99.1333,
+    capacity:"POME ~800 ton/hari (klaster Sum-Ut)",
+    note:"Kawasan Ekonomi Khusus (KEK) Sei Mangkei — sudah ada kawasan industri hilir sawit. Dekat Pelabuhan Kuala Tanjung & Belawan. FDI investasi manufaktur aktif.",
+    pome:"~800 ton/hari",
+    rspo:"RSPO + ISPO",
+    src:"BKPM KEK Sei Mangkei 2024"
+  },
+  // === PKS SWASTA ===
+  {
+    id:"pks-5", cat:"pks-priv", prio:1,
+    name:"Asian Agri Mill — Indragiri Hulu",
+    company:"Asian Agri (RGE Group)",
+    region:"Indragiri Hulu, Riau",
+    lat:-0.3620, lng:102.5510,
+    capacity:"~100K ton FFB/tahun per mill",
+    note:"Biogas power plant POME sudah berjalan di beberapa mill. HQ di Medan — dekat Belawan. 20 mill aktif di Riau & Jambi. Terbuka skema Waste-to-Energy Agreement.",
+    pome:"~300 ton/hari",
+    rspo:"RSPO + ISPO",
+    src:"Asian Agri Sustainability Report 2024"
+  },
+  {
+    id:"pks-6", cat:"pks-priv", prio:2,
+    name:"Wilmar Mill — Kotawaringin Timur",
+    company:"Wilmar International",
+    region:"Kotawaringin Timur, Kalimantan Tengah",
+    lat:-1.7980, lng:112.9854,
+    capacity:"~150K ton FFB/tahun",
+    note:"RSPO Certified dari Mill List 2024. Rute ke Sampit proven untuk CPO — dapat digunakan Bio-CNG ISO tank. Wilmar punya MRA Verra untuk kredit karbon internasional.",
+    pome:"~400 ton/hari",
+    rspo:"RSPO + MRA Verra",
+    src:"RSPO Mill List 2024"
+  },
+  {
+    id:"pks-7", cat:"pks-priv", prio:2,
+    name:"Wilmar Mill — Seruyan, Kalteng",
+    company:"Wilmar International",
+    region:"Seruyan, Kalimantan Tengah",
+    lat:-2.1839, lng:112.0343,
+    capacity:"~120K ton FFB/tahun",
+    note:"Koordinat verified dari Colgate Mill List (NDPE 2024). Area Seruyan adalah klaster sawit padat Kal-Tengah. Proximity ke Pelabuhan Kumai.",
+    pome:"~350 ton/hari",
+    rspo:"RSPO",
+    src:"Colgate Mill List NDPE 2024"
+  },
+  {
+    id:"pks-8", cat:"pks-priv", prio:2,
+    name:"Bumitama Agri — Kotawaringin",
+    company:"Bumitama Agri Ltd.",
+    region:"Kotawaringin, Kalimantan Tengah",
+    lat:-2.3911, lng:111.3733,
+    capacity:"~100K ton FFB/tahun",
+    note:"Koordinat dari PepsiCo/General Mills Mill List. 15 mill semua dekat kebun sendiri — feedstock sangat predictable. Proximity ke Pelabuhan Kumai.",
+    pome:"~300 ton/hari",
+    rspo:"RSPO",
+    src:"PepsiCo Mill List 2024"
+  },
+  {
+    id:"pks-9", cat:"pks-priv", prio:2,
+    name:"Bumitama Agri — Ketapang, Kal-Bar",
+    company:"Bumitama Agri Ltd.",
+    region:"Ketapang, Kalimantan Barat",
+    lat:-2.4458, lng:110.2658,
+    capacity:"~90K ton FFB/tahun",
+    note:"RSPO Certified. Kalimantan Barat adalah operasi utama Bumitama. Dekat Pelabuhan Ketapang — alternatif Pontianak.",
+    pome:"~250 ton/hari",
+    rspo:"RSPO",
+    src:"RSPO Mill List 2024"
+  },
+  {
+    id:"pks-10", cat:"pks-priv", prio:2,
+    name:"Astra Agro — Kotawaringin Barat",
+    company:"Astra Agro Lestari (Astra Int.)",
+    region:"Kotawaringin Barat, Kalimantan Tengah",
+    lat:-2.3772, lng:111.7932,
+    capacity:"~100K ton FFB/tahun",
+    note:"Credit history sangat kuat (induk Astra International). Kandidat offtaker Bio-CNG sekaligus — bankability sangat tinggi. Proximity Pelabuhan Kumai.",
+    pome:"~300 ton/hari",
+    rspo:"RSPO + ISPO",
+    src:"Astra Agro Sustainability Report 2024"
+  },
+  {
+    id:"pks-11", cat:"pks-priv", prio:3,
+    name:"Asian Agri Mill — Merangin, Jambi",
+    company:"Asian Agri (RGE Group)",
+    region:"Merangin, Jambi",
+    lat:-2.3420, lng:102.1830,
+    capacity:"~80K ton FFB/tahun",
+    note:"Klaster Jambi sebagai feedstock alternatif dan diversifikasi. Bagian dari 20 mill Asian Agri di Riau+Jambi.",
+    pome:"~220 ton/hari",
+    rspo:"RSPO",
+    src:"Asian Agri Mill List 2024"
+  },
+  // === PELABUHAN ===
+  {
+    id:"port-1", cat:"port", prio:1,
+    name:"Pelabuhan Belawan",
+    city:"Medan, Sumatra Utara",
+    region:"Sumatra Utara",
+    lat:3.7894, lng:98.7017,
+    throughput:"~1,2 juta TEU/tahun",
+    commodity:"CPO, karet, kontainer",
+    note:"No.3 terbesar Indonesia. Ekspansi BNCT: 600K→1,4 juta TEU (Pelindo+DP World+INA 2024). Ada CPO terminal dedicated — compatible ISO tank Bio-CNG. Rute: Singapore, Malaysia, Jepang.",
+    src:"Pelindo Regional I, 2024"
+  },
+  {
+    id:"port-2", cat:"port", prio:1,
+    name:"Pelabuhan Sampit",
+    city:"Kotawaringin Timur, Kalimantan Tengah",
+    region:"Kalimantan Tengah",
+    lat:-2.5337, lng:112.9438,
+    throughput:"Trunk Port Kat.2 — CPO besar",
+    commodity:"CPO (dominan), kayu",
+    note:"Gateway Kalimantan Tengah. Rute CPO ke Kuala Tanjung sudah proven — Bio-CNG bisa ikut rute yang sama. PRIORITAS 1 Kalimantan.",
+    src:"Pelindo, 2024"
+  },
+  {
+    id:"port-3", cat:"port", prio:2,
+    name:"Pelabuhan Dumai",
+    city:"Dumai, Riau",
+    region:"Riau",
+    lat:1.6793, lng:101.4592,
+    throughput:"~7 juta ton/tahun",
+    commodity:"CPO, minyak mentah, pupuk",
+    note:"Ada Pertamina refinery existing — sinergi aset Pertamina Group langsung. Congestion risk di Selat Rupat perlu dimitigasi.",
+    src:"Pelindo Regional I, 2024"
+  },
+  {
+    id:"port-4", cat:"port", prio:2,
+    name:"Pelabuhan Kuala Tanjung",
+    city:"Batu Bara, Sumatra Utara",
+    region:"Sumatra Utara",
+    lat:3.3467, lng:99.4500,
+    throughput:"Hub internasional CPO",
+    commodity:"CPO hub internasional, kontainer",
+    note:"Transshipment hub CPO internasional — terima CPO dari Sampit & Kumai. Rute India, Bangladesh, Pakistan. Bio-CNG ISO tank dapat menggunakan rute yang sama.",
+    src:"Pelindo I, 2024"
+  },
+  {
+    id:"port-5", cat:"port", prio:2,
+    name:"Pelabuhan Pontianak",
+    city:"Pontianak, Kalimantan Barat",
+    region:"Kalimantan Barat",
+    lat:0.0500, lng:109.3167,
+    throughput:"143.500 TEU; 3,47 juta ton; 7.000 kapal/tahun",
+    commodity:"Karet, kayu, CPO",
+    note:"Gateway Kalimantan Barat. Bumitama Agri & Wilmar Kal-Bar proximity natural. Alternatif rute ke Jawa.",
+    src:"Pelindo, 2024"
+  },
+  {
+    id:"port-6", cat:"port", prio:3,
+    name:"Pelabuhan Kumai",
+    city:"Kotawaringin Barat, Kalimantan Tengah",
+    region:"Kalimantan Tengah",
+    lat:-2.7400, lng:111.7300,
+    throughput:"Feeder port CPO",
+    commodity:"CPO, hasil hutan",
+    note:"Feeder port — alternatif Sampit jika kongesti. CPO sudah rutin ke Kuala Tanjung. Dekat PKS Bumitama & Astra Agro.",
+    src:"Pelindo, 2024"
+  },
+  // === SMART SATELLITE HUB ===
+  {
+    id:"hub-1", cat:"hub", prio:1,
+    name:"Smart Hub Pekanbaru (Usulan B-GRIT)",
+    city:"Pekanbaru, Riau",
+    region:"Riau",
+    lat:0.5071, lng:101.4478,
+    note:"Ibukota Riau — pusat klaster PKS terbesar Indonesia. HQ PTPN IV Regional III ada di sini. Jalan tol Trans-Sumatera tersambung ke Medan & Palembang. Konsolidasi Bio-CNG dari Riau sebelum ke Belawan/Dumai.",
+    capacity_usulan:"50.000 m³ storage tank ISO"
+  },
+  {
+    id:"hub-2", cat:"hub", prio:1,
+    name:"Smart Hub Sei Mangkei (Usulan B-GRIT)",
+    city:"Simalungun, Sumatra Utara",
+    region:"Sumatra Utara",
+    lat:2.9833, lng:99.1333,
+    note:"KEK Sei Mangkei — kawasan industri sawit existing. Sudah ada investasi FDI manufaktur & industri hilir kelapa sawit. Dekat Belawan (80km) & Kuala Tanjung (40km). Double fungsi: Hub + Industrial Park.",
+    capacity_usulan:"60.000 m³ + fasilitas KEK existing"
+  },
+  {
+    id:"hub-3", cat:"hub", prio:1,
+    name:"Smart Hub Palangkaraya (Usulan B-GRIT)",
+    city:"Palangkaraya, Kalimantan Tengah",
+    region:"Kalimantan Tengah",
+    lat:-2.2136, lng:113.9108,
+    note:"Ibukota Kalimantan Tengah. Akses ke klaster sawit 2,04 juta ha. Proximity ke Wilmar & Sinar Mas terbesar. Konsolidasi Bio-CNG sebelum ke Sampit/Kumai.",
+    capacity_usulan:"40.000 m³ storage tank ISO"
+  },
+  {
+    id:"hub-4", cat:"hub", prio:2,
+    name:"Smart Hub Pontianak (Usulan B-GRIT)",
+    city:"Pontianak, Kalimantan Barat",
+    region:"Kalimantan Barat",
+    lat:0.0572, lng:109.3457,
+    note:"Kota terbesar Kalimantan Barat. Bumitama & Wilmar beroperasi besar di Kal-Bar. Efisiensi tinggi karena Hub = Port (satu lokasi).",
+    capacity_usulan:"30.000 m³ + fasilitas Pelabuhan existing"
+  },
+  // === DEMAND CENTER ===
+  {
+    id:"dem-1", cat:"demand", prio:1,
+    name:"IMIP Morowali Industrial Park",
+    province:"Sulawesi Tengah",
+    region:"Sulawesi Tengah",
+    lat:-2.9833, lng:121.6667,
+    type_demand:"Kawasan Industri Nikel & Metalurgi",
+    note:"Kawasan industri nikel terbesar Asia. Konsumsi gas industri sangat besar untuk smelting. TARGET OFFTAKER PRIORITAS 1 Bio-CNG Pertamina NRE.",
+    src:"IMIP Official"
+  },
+  {
+    id:"dem-2", cat:"demand", prio:1,
+    name:"Kawasan Industri Jababeka",
+    province:"Bekasi, Jawa Barat",
+    region:"Jawa Barat",
+    lat:-6.3278, lng:107.1517,
+    type_demand:"Kawasan Industri Manufaktur",
+    note:"2.000+ perusahaan manufaktur. Target offtaker Bio-CNG terbesar di Jawa Barat. Offtake potensial 70–80% nameplate capacity untuk bankability FID.",
+    src:"Jababeka Official 2024"
+  },
+  {
+    id:"dem-3", cat:"demand", prio:2,
+    name:"Krakatau Industrial Estate Cilegon",
+    province:"Banten",
+    region:"Banten",
+    lat:-5.9897, lng:106.0553,
+    type_demand:"Industri Baja & Petrokimia",
+    note:"Industri baja & petrokimia — pengguna gas intensif. Dekat Pelabuhan Merak (entry point dari Sumatera). Rute logistik Bio-CNG dari Belawan via Merak sangat feasible.",
+    src:"Krakatau Steel Official"
+  },
+  {
+    id:"dem-4", cat:"demand", prio:2,
+    name:"Kawasan Industri Gresik (KIG)",
+    province:"Gresik, Jawa Timur",
+    region:"Jawa Timur",
+    lat:-7.1566, lng:112.6546,
+    type_demand:"Kawasan Industri Multi-Sektor",
+    note:"Hub industri Jawa Timur. Dekat Pelabuhan Tanjung Perak. Wilmar refinery Gresik sudah ada — sinergi Bio-CNG dengan supply chain Wilmar existing.",
+    src:"KIG Official 2024"
+  }
+];
+
+// =====================================================
+// MAP SETUP
+// =====================================================
+const map = L.map('map', {
+  center: [0.5, 110],
+  zoom: 5,
+  zoomControl: true
+});
+
+// OSM basemap - akurasi batas administrasi tinggi
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  maxZoom: 18
+}).addTo(map);
+
+// =====================================================
+// MARKER CONFIGS
+// =====================================================
+function getIcon(cat, prio) {
+  const configs = {
+    'pks-bumn': { color:'#B71C1C', size: prio===1?16:13 },
+    'pks-priv': { color:'#1565C0', size: prio===1?14:12 },
+    'port':      { color:'#E65100', size:18, shape:'square' },
+    'hub':       { color:'#6A1B9A', size:14, shape:'diamond' },
+    'demand':    { color:'#F9A825', size: prio===1?16:13, shape:'star' }
+  };
+  const c = configs[cat] || { color:'#888', size:12 };
+  const s = c.size;
+
+  let svg = '';
+  if (c.shape === 'square') {
+    svg = `<svg width="${s+4}" height="${s+4}" viewBox="0 0 ${s+4} ${s+4}"><rect x="2" y="2" width="${s}" height="${s}" rx="2" fill="${c.color}" stroke="white" stroke-width="2"/></svg>`;
+  } else if (c.shape === 'diamond') {
+    const h = s+4;
+    svg = `<svg width="${h}" height="${h}" viewBox="0 0 ${h} ${h}"><polygon points="${h/2},2 ${h-2},${h/2} ${h/2},${h-2} 2,${h/2}" fill="${c.color}" stroke="white" stroke-width="2"/></svg>`;
+  } else if (c.shape === 'star') {
+    svg = `<svg width="${s+4}" height="${s+4}" viewBox="0 0 24 24"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill="${c.color}" stroke="white" stroke-width="1.5"/></svg>`;
+  } else {
+    svg = `<svg width="${s+4}" height="${s+4}" viewBox="0 0 ${s+4} ${s+4}"><circle cx="${(s+4)/2}" cy="${(s+4)/2}" r="${s/2}" fill="${c.color}" stroke="white" stroke-width="2"/></svg>`;
+  }
+
+  return L.divIcon({
+    html: svg,
+    iconSize: [s+4, s+4],
+    iconAnchor: [(s+4)/2, (s+4)/2],
+    className: ''
+  });
+}
+
+// =====================================================
+// POPUP CONTENT
+// =====================================================
+function getPopupColor(cat) {
+  const colors = {
+    'pks-bumn':'#B71C1C','pks-priv':'#1565C0','port':'#E65100','hub':'#6A1B9A','demand':'#F9A825'
+  };
+  return colors[cat] || '#4CAF50';
+}
+function getCatLabel(cat) {
+  const labels = {
+    'pks-bumn':'🏭 PKS — BUMN','pks-priv':'🏭 PKS — Swasta','port':'🚢 Pelabuhan','hub':'⬡ Smart Hub (Usulan)','demand':'🏗️ Demand Center'
+  };
+  return labels[cat] || cat;
+}
+function getPrioLabel(prio) {
+  if(prio===1) return '<span class="prio-badge" style="background:#B71C1C;color:#fff">⭐ Prioritas 1</span>';
+  if(prio===2) return '<span class="prio-badge" style="background:#E65100;color:#fff">Prioritas 2</span>';
+  return '<span class="prio-badge" style="background:#5D4037;color:#fff">Prioritas 3</span>';
+}
+
+function buildPopup(d) {
+  const col = getPopupColor(d.cat);
+  return `<div class="popup-inner">
+    <div class="popup-type" style="color:${col}">${getCatLabel(d.cat)}</div>
+    <div class="popup-name">${d.name}</div>
+    ${d.company?`<div class="popup-row"><b>Perusahaan:</b> ${d.company}</div>`:''}
+    ${d.region?`<div class="popup-row"><b>Lokasi:</b> ${d.region}</div>`:''}
+    ${d.capacity?`<div class="popup-row"><b>Kapasitas:</b> ${d.capacity}</div>`:''}
+    ${d.pome?`<div class="popup-row"><b>POME Estimasi:</b> ${d.pome}</div>`:''}
+    ${d.rspo?`<div class="popup-row"><b>Sertifikasi:</b> ${d.rspo}</div>`:''}
+    ${d.throughput?`<div class="popup-row"><b>Throughput:</b> ${d.throughput}</div>`:''}
+    ${d.commodity?`<div class="popup-row"><b>Komoditas:</b> ${d.commodity}</div>`:''}
+    ${d.type_demand?`<div class="popup-row"><b>Tipe Industri:</b> ${d.type_demand}</div>`:''}
+    ${d.capacity_usulan?`<div class="popup-row"><b>Kapasitas Usulan:</b> ${d.capacity_usulan}</div>`:''}
+    <div class="popup-row" style="margin-top:6px;font-size:10px;line-height:1.5;color:#81C784">${d.note}</div>
+    <div class="popup-coord">${d.lat}, ${d.lng}</div>
+    <div class="popup-prio">${getPrioLabel(d.prio||2)}</div>
+    ${d.src?`<div style="font-size:9px;color:#4CAF50;margin-top:5px">Sumber: ${d.src}</div>`:''}
+  </div>`;
+}
+
+// =====================================================
+// LAYERS
+// =====================================================
+const layers = { 'pks-bumn':[], 'pks-priv':[], 'port':[], 'hub':[], 'demand':[] };
+const layerGroups = {};
+const layerVisible = { 'pks-bumn':true, 'pks-priv':true, 'port':true, 'hub':true, 'demand':true };
+let activeFilter = 'all';
+let activePoint = null;
+
+POINTS.forEach(d => {
+  const marker = L.marker([d.lat, d.lng], { icon: getIcon(d.cat, d.prio||2) });
+  marker.bindTooltip(d.name, { className:'custom-tooltip', direction:'top', offset:[0,-8] });
+  marker.bindPopup(buildPopup(d), {
+    className:'custom-popup',
+    maxWidth:300,
+    closeButton:true
+  });
+  marker.on('click', ()=> highlightListItem(d.id));
+  layers[d.cat].push(marker);
+});
+
+Object.keys(layers).forEach(cat => {
+  layerGroups[cat] = L.layerGroup(layers[cat]).addTo(map);
+});
+
+// =====================================================
+// VIRTUAL PIPELINE ROUTES
+// =====================================================
+const routes = [
+  // Sumatera → Jawa
+  { coords: [[0.5071,101.4478],[3.7894,98.7017],[1.6793,101.4592],[-5.9897,106.0553]], color:'#E65100', label:'Rute Sumatera→Jawa (Belawan/Dumai)' },
+  // Kalimantan → Jawa
+  { coords: [[-2.2136,113.9108],[-2.5337,112.9438],[-7.1566,112.6546]], color:'#0277BD', label:'Rute Kalteng→Jawa (Sampit)' },
+  { coords: [[0.0572,109.3457],[-6.3278,107.1517]], color:'#0277BD', label:'Rute Kalbar→Jawa (Pontianak)' }
+];
+
+routes.forEach(r => {
+  L.polyline(r.coords, {
+    color: r.color,
+    weight: 1.8,
+    dashArray: '8,6',
+    opacity: 0.65
+  }).addTo(map).bindTooltip(r.label, { className:'custom-tooltip' });
+});
+
+// =====================================================
+// LAYER TOGGLE
+// =====================================================
+function toggleLayer(cat) {
+  layerVisible[cat] = !layerVisible[cat];
+  if (layerVisible[cat]) {
+    map.addLayer(layerGroups[cat]);
+  } else {
+    map.removeLayer(layerGroups[cat]);
+  }
+  // Update legend UI
+  document.querySelectorAll('.legend-item').forEach((el,i) => {
+    const cats = ['pks-bumn','pks-priv','port','hub','demand'];
+    if (el.getAttribute('onclick') && el.getAttribute('onclick').includes(cat)) {
+      el.classList.toggle('inactive', !layerVisible[cat]);
+    }
+  });
+}
+
+// =====================================================
+// SIDEBAR LIST
+// =====================================================
+function buildList(filterCat, searchText) {
+  const container = document.getElementById('point-list');
+  container.innerHTML = '';
+  const filtered = POINTS.filter(d => {
+    const matchCat = filterCat === 'all' || d.cat === filterCat;
+    const matchSearch = !searchText || d.name.toLowerCase().includes(searchText.toLowerCase()) || (d.region||'').toLowerCase().includes(searchText.toLowerCase()) || (d.company||'').toLowerCase().includes(searchText.toLowerCase());
+    return matchCat && matchSearch;
+  });
+  filtered.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'point-item';
+    el.id = 'li-'+d.id;
+    const col = getPopupColor(d.cat);
+    const catShort = { 'pks-bumn':'PKS BUMN','pks-priv':'PKS Swasta','port':'Pelabuhan','hub':'Smart Hub','demand':'Demand' };
+    const prioColors = {1:'#B71C1C',2:'#E65100',3:'#5D4037'};
+    el.innerHTML = `
+      <div class="pi-name">${d.name}</div>
+      <div class="pi-sub">${d.company||d.city||''} ${d.region?'· '+d.region:''}</div>
+      <div class="pi-coord">${d.lat}, ${d.lng}</div>
+      <div class="pi-badges">
+        <span class="pi-badge" style="background:${col}22;color:${col}">${catShort[d.cat]||d.cat}</span>
+        <span class="pi-badge" style="background:${prioColors[d.prio||2]}22;color:${prioColors[d.prio||2]}">P${d.prio||2}</span>
+      </div>
+    `;
+    el.onclick = () => {
+      map.setView([d.lat, d.lng], 10, { animate:true });
+      layerGroups[d.cat] && layers[d.cat].forEach(m => {
+        if (m.getLatLng().lat === d.lat && m.getLatLng().lng === d.lng) m.openPopup();
+      });
+      highlightListItem(d.id);
+    };
+    container.appendChild(el);
+  });
+}
+
+function highlightListItem(id) {
+  document.querySelectorAll('.point-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('li-'+id);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+}
+
+function filterList(text) {
+  buildList(activeFilter, text);
+}
+
+function setFilter(cat, btn) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildList(cat, document.getElementById('search-input').value);
+}
+
+// =====================================================
+// TAB SWITCHING
+// =====================================================
+function switchTab(tab) {
+  document.querySelectorAll('.spanel').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  document.getElementById('spanel-'+tab).classList.add('show');
+  document.querySelectorAll('.stab').forEach((b,i) => {
+    if ((['legend','list','stats'])[i] === tab) b.classList.add('active');
+  });
+  if (tab === 'list') buildList('all','');
+}
+
+// Init list
+buildList('all', '');
+</script>
+</body>
+</html>
